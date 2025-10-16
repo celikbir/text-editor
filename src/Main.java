@@ -21,6 +21,7 @@ public class Main {
     private static int rows = 10;
     private static int columns = 10;
     private static int cursorX = 0, cursorY = 0;
+    private static int offsetY = 0;
 
     private static List<String> content = List.of();
     private static final String signatureText = "Editor v0.0.1";
@@ -28,14 +29,23 @@ public class Main {
     public static void main(String[] args) throws IOException {
 
         openFile(args);
-
         enableRawMode();
         initEditor();
 
         while (true) {
+            scroll();
             refreshScreen();
             int key = readKey();
             handleKey(key);
+        }
+    }
+
+    private static void scroll() {
+        if (cursorY >= rows + offsetY) {
+            offsetY = cursorY - rows + 1;
+        }
+        else if (cursorY < offsetY) {
+            offsetY = cursorY;
         }
     }
 
@@ -75,11 +85,12 @@ public class Main {
     }
 
     private static void renderCursor(StringBuilder sb) {
-        sb.append(String.format("\033[%d;%dH", cursorY + 1, cursorX + 1));
+        sb.append(String.format("\033[%d;%dH", cursorY - offsetY + 1, cursorX + 1));
     }
 
     private static void renderStatusBar(StringBuilder sb) {
-        String cursorCoordinates = "Rows: " + rows + " X: " + (cursorX + 1) + " Y: " + (cursorY + 1);
+        String cursorCoordinates =
+                "Rows: " + content.size() + " X: " + (cursorX + 1) + " Y: " + (cursorY + 1);
 
         sb.append("\033[7m")
                 .append(signatureText)
@@ -94,10 +105,12 @@ public class Main {
 
     private static void renderContent(StringBuilder sb) {
         for (int i = 0; i < rows; i++) {
-            if (i >= content.size()) {
+            int contentBaseIndex = offsetY + i;
+
+            if (contentBaseIndex >= content.size()) {
                 sb.append("~");
             } else {
-                sb.append(content.get(i));
+                sb.append(content.get(contentBaseIndex));
             }
 
             sb.append("\033[K\r\n");
@@ -129,8 +142,7 @@ public class Main {
                 }
             }
             case ARROW_DOWN -> {
-                // consider status bar
-                if (cursorY < rows - 2) {
+                if (cursorY < content.size() - 1) {
                     cursorY++;
                 }
             }
